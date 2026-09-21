@@ -82,69 +82,43 @@ export function buildPrintableHtml(html: string, s: PdfSettings): string {
   return `${doctype}${parsed.documentElement.outerHTML}`;
 }
 
-/** Opens the browser print dialog for the HTML. Choose "Save as PDF" there. */
-export function printAsPdf(
-  html: string,
-  settings: PdfSettings,
-  filename: string
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const frame = document.createElement("iframe");
-    // No allow-scripts: the file's JavaScript never runs. allow-modals lets print() work.
-    frame.setAttribute("sandbox", "allow-same-origin allow-modals");
-    frame.setAttribute("aria-hidden", "true");
-    frame.style.cssText =
-      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
+async function waitForAssets(doc: Document) {
+  const images = Array.from(doc.images).map((img) =>
+    img.complete
+      ? Promise.resolve()
+      : new Promise<void>((r) => {
+          img.onload = () => r();
+          img.onerror = () => r();
+        })
+  );
+  await Promise.race([
+    Promise.all([doc.fonts?.ready, ...images]),
+    new Promise((r) => setTimeout(r, 3000)),
+  ]);
+}
 
-    const previousTitle = document.title;
-    let cleaned = false;
-    const cleanup = () => {
-      if (cleaned) return;
-      cleaned = true;
-      document.title = previousTitle;
-      frame.remove();
-    };
+/**
+ * Prints the preview frame directly (no re-loading), so it is instant.
+ * Choose "Save as PDF" in the print window.
+ */
+export async function printFrame(frame: HTMLIFrameElement, filename: string) {
+  const win = frame.contentWindow;
+  const doc = frame.contentDocument;
+  if (!win || !doc) {
+    throw new Error("The preview isn't ready yet. Try again in a moment.");
+  }
+  await waitForAssets(doc);
 
-    frame.onload = async () => {
-      const win = frame.contentWindow;
-      const doc = frame.contentDocument;
-      if (!win || !doc) {
-        cleanup();
-        reject(new Error("The HTML couldn't be loaded."));
-        return;
-      }
+  // Browsers use the page title as the default PDF file name.
+  const previousTitle = document.title;
+  const restore = () => {
+    document.title = previousTitle;
+  };
+  document.title = filename;
+  doc.title = filename;
+  win.addEventListener("afterprint", restore, { once: true });
+  setTimeout(restore, 30_000); // safety net
 
-      // Wait for fonts and images (max 5s) so nothing is missing.
-      const images = Array.from(doc.images).map((img) =>
-        img.complete
-          ? Promise.resolve()
-          : new Promise<void>((r) => {
-              img.onload = () => r();
-              img.onerror = () => r();
-            })
-      );
-      await Promise.race([
-        Promise.all([doc.fonts?.ready, ...images]),
-        new Promise((r) => setTimeout(r, 5000)),
-      ]);
-
-      // Browsers use the page title as the default PDF file name.
-      document.title = filename;
-      doc.title = filename;
-
-      win.addEventListener("afterprint", cleanup, { once: true });
-      setTimeout(cleanup, 60_000); // safety net
-      win.focus();
-      win.print();
-      resolve();
-    };
-
-    frame.onerror = () => {
-      cleanup();
-      reject(new Error("The HTML couldn't be loaded."));
-    };
-
-    frame.srcdoc = buildPrintableHtml(html, settings);
-    document.body.appendChild(frame);
-  });
+  win.focus();
+  win.print();
 }
