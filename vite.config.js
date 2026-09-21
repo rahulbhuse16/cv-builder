@@ -7,12 +7,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  server: {
-  proxy: {
-    "/api": {
-      target: "https://cv-builder-dsd6.onrender.com",
-      changeOrigin: true,
-    },
-  },
-},
+  
+
 });

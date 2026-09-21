@@ -1,5 +1,5 @@
 export async function exportPdf(html: string): Promise<void> {
-  const response = await fetch("/api/resume/pdf", {
+  const response = await fetch("https://cv-builder-dsd6.onrender.com/api/resume/pdf", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
