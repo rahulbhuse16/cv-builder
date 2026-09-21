@@ -31,6 +31,7 @@ export default function App() {
     setError(null);
     setBusy(true);
     try {
+      //@ts-ignore
       await previewRef.current?.print();
     } catch (err) {
       setError(
