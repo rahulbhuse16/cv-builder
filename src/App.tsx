@@ -1,69 +1,67 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-import HtmlEditor from "./components/HtmlEditor";
-import CvPreview from "./components/CvPreview";
-import ExportButtons from "./components/ExportButtons";
+import UploadPage from "./pages/UploadPage";
+import PreviewPage from "./pages/PreviewPage";
+import ExportPage from "./pages/ExportPage";
+import { PdfSettings } from "./pages/PdfTools";
+import Stepper from "./pages/Stepper";
 
-import { defaultCvHtml } from "./templates/AtsClassicTemplate";
-import { htmlToCv } from "./utils/htmlToCv";
+export type Page = "upload" | "preview" | "export";
+
+export interface HtmlDoc {
+  name: string;
+  size: number;
+  html: string;
+}
 
 export default function App() {
-  const [html, setHtml] =
-    useState<string>(
-      ""
-    );
+  const [page, setPage] = useState<Page>("upload");
+  const [doc, setDoc] = useState<HtmlDoc | null>(null);
+  const [settings, setSettings] = useState<PdfSettings>({
+    paper: "a4",
+    orientation: "portrait",
+    marginMm: 10,
+  });
 
-  const cv = useMemo(
-    () => htmlToCv(html),
-    [html]
-  );
+  // Without content, the only valid page is Upload.
+  const current: Page = doc ? page : "upload";
 
   return (
-    <div className="app">
-      <header
-        className="
-          flex
-          h-16
-          shrink-0
-          items-center
-          justify-between
-          border-b
-          border-slate-200
-          bg-white
-          px-6
-        "
-      >
-        <div>
-          <h1 className="text-lg font-bold text-slate-900">
-            ATS CV Builder
+    <div className="min-h-screen bg-slate-100 text-slate-900">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <h1 className="font-serif text-xl font-semibold tracking-tight">
+            HTML to PDF
           </h1>
-
-          <p className="text-xs text-slate-500">
-            HTML → ATS CV → PDF / Word
-          </p>
+          <Stepper current={current} hasDoc={!!doc} onNavigate={setPage} />
         </div>
-
-        <ExportButtons html={html} cv={cv} />
       </header>
 
-      <main
-        className="
-          grid
-          min-h-0
-          flex-1
-          grid-cols-2
-        "
-      >
-        <section className="min-h-0 border-r border-slate-200">
-          <HtmlEditor
-            value={html}
-            onChange={setHtml}
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        {current === "upload" && (
+          <UploadPage
+            onLoaded={(d) => {
+              setDoc(d);
+              setPage("preview");
+            }}
           />
-        </section>
-
-        <section className="min-h-0">
-          <CvPreview html={html} />
-        </section>
+        )}
+        {current === "preview" && doc && (
+          <PreviewPage
+            doc={doc}
+            settings={settings}
+            onSettings={setSettings}
+            onReplace={() => setPage("upload")}
+            onNext={() => setPage("export")}
+          />
+        )}
+        {current === "export" && doc && (
+          <ExportPage
+            doc={doc}
+            settings={settings}
+            onBack={() => setPage("preview")}
+          />
+        )}
       </main>
     </div>
   );
