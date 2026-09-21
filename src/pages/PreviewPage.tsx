@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+//@ts-ignore
 import type { HtmlDoc } from "../App";
 import {
   buildPrintableHtml,

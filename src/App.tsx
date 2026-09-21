@@ -8,7 +8,7 @@ const selectClass =
   "mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30";
 
 export default function App() {
-  const previewRef = useRef<PreviewHandle>(null);
+  const previewRef = useRef(null);
   const pendingAutoSave = useRef(false);
 
   const [doc, setDoc] = useState<{ name: string; html: string } | null>(null);
